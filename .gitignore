@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+data/pdfs/
+tests/test_results.json
+
+# Chinese docs (internal only)
+docs/*-zh.md
