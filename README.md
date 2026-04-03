@@ -96,9 +96,9 @@ All data comes from **official Webb Schools sources only**:
 
 ```mermaid
 flowchart LR
-    W["webb.org<br/>117 pages"] -->|scraper.py| J["data/scraped/<br/>*.json"]
+    W["webb.org<br/>117 pages"] -->|scraper.py| J["data-store/scraped/<br/>*.json"]
     P["PDFs (9)<br/>Handbook · Catalog · more"] -->|pdf_loader.py| J
-    J -->|"build_index.py<br/><sub>chunk → embed → store</sub>"| C[("ChromaDB<br/>1,115 chunks")]
+    J -->|"build_index.py<br/><sub>chunk → embed → store</sub>"| C[("ChromaDB<br/>data-store/chroma_db")]
 
     style W fill:#e8f4f8,stroke:#1a3a5c,color:#1a3a5c
     style P fill:#e8f4f8,stroke:#1a3a5c,color:#1a3a5c
@@ -113,7 +113,7 @@ flowchart LR
 ## Project Structure
 
 ```
-webb-ai/
+webbgpt-1/
 ├── api/
 │   └── main.py              # FastAPI server (chat API + static files)
 ├── rag/
@@ -127,9 +127,10 @@ webb-ai/
 │   ├── app.js                # Client-side logic + streaming
 │   └── style.css             # Styles (mobile-responsive)
 ├── data/
-│   ├── scraped/              # JSON files (intermediate)
-│   └── pdfs/                 # Source PDF files
-├── chroma_db/                # Vector database (committed)
+│   └── pdfs/                 # Source PDF files (gitignored, local only)
+├── data-store/               # Git submodule → webbgpt-1-data
+│   ├── chroma_db/            # Vector database
+│   └── scraped/              # Intermediate JSON files
 ├── tests/
 │   ├── test_questions.json   # 35 test questions (8 categories)
 │   ├── run_tests.py          # Automated test runner
@@ -146,8 +147,8 @@ webb-ai/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/szkangjian/webb-ai.git
-cd webb-ai
+git clone --recurse-submodules https://github.com/PatrickJYKang/webbgpt-1.git
+cd webbgpt-1
 pip install -r requirements.txt
 ```
 
@@ -168,7 +169,7 @@ python main.py
 # Open http://localhost:8000
 ```
 
-The vector database (`chroma_db/`) is already committed, so you can start querying immediately without rebuilding the index.
+The vector database lives in the `data-store/` submodule. If you cloned with `--recurse-submodules` it's already there — you can start querying immediately without rebuilding the index.
 
 ## Maintenance Guide
 
@@ -186,10 +187,9 @@ python rag/build_index.py
 # 3. Test
 python tests/run_tests.py
 
-# 4. Commit and deploy
-git add chroma_db/ data/scraped/
-git commit -m "Update knowledge base from latest webb.org"
-git push   # Render auto-deploys
+# 4. Commit data-store, then update the submodule pointer in the app repo
+cd data-store && git add -A && git commit -m "Update knowledge base from latest webb.org" && git push && cd ..
+git add data-store && git commit -m "Update data-store submodule" && git push   # Render auto-deploys
 ```
 
 #### Scenario B: New PDF document (e.g., updated handbook)
@@ -209,7 +209,7 @@ python rag/build_index.py
 
 #### Scenario C: Adding a completely new source (e.g., a Google Doc, FAQ page)
 
-Create a JSON file in `data/scraped/` with this format:
+Create a JSON file in `data-store/scraped/` with this format:
 
 ```json
 {
@@ -227,16 +227,20 @@ This is the harder problem. Since the vector index is built from all JSON files 
 
 ```bash
 # 1. Delete the outdated JSON file
-rm data/scraped/pdf_old_handbook_2024.json
+rm data-store/scraped/pdf_old_handbook_2024.json
 
 # 2. Delete the entire vector database
-rm -rf chroma_db/
+rm -rf data-store/chroma_db/
 
 # 3. Rebuild from scratch (only current files will be indexed)
 python rag/build_index.py
 
 # 4. Test to make sure nothing broke
 python tests/run_tests.py
+
+# 5. Commit to data-store, then update the submodule pointer in the app repo
+cd data-store && git add -A && git commit -m "Remove outdated content, rebuild index" && git push && cd ..
+git add data-store && git commit -m "Update data-store submodule" && git push
 ```
 
 **Important**: There is no "partial update" — you must rebuild the entire index. This takes about 10 minutes due to Gemini API rate limits (1,115 chunks x embedding calls).
@@ -248,11 +252,11 @@ Each school year (typically August):
 1. **Replace** `data/pdfs/` with the new Student Handbook and Course Catalog
 2. **Re-run** `python ingest/pdf_loader.py` to extract text
 3. **Re-run** `python ingest/scraper.py` to get latest website content
-4. **Delete** old JSON files from `data/scraped/` (e.g., last year's handbook)
-5. **Delete** `chroma_db/` and rebuild: `python rag/build_index.py`
+4. **Delete** old JSON files from `data-store/scraped/` (e.g., last year's handbook)
+5. **Delete** `data-store/chroma_db/` and rebuild: `python rag/build_index.py`
 6. **Run tests**: `python tests/run_tests.py`
 7. **Review** test results in `tests/test_results.md`
-8. **Commit and push** to trigger redeployment
+8. **Commit data-store** and push, then update the submodule pointer and push the app repo
 
 ### Updating Topic-Specific Search (query.py)
 
@@ -300,8 +304,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 Requirements:
 - Python 3.12+
 - ~512 MB RAM minimum
-- The `chroma_db/` directory must be present (committed in repo)
-- The `data/scraped/` directory must be present (for keyword fallback)
+- The `data-store/` submodule must be populated (`git clone --recurse-submodules` or `git submodule update --init`)
 
 ## Testing
 

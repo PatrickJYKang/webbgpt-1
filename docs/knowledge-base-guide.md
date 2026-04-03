@@ -9,10 +9,10 @@
 ```
 Raw Sources                 Intermediate              Vector Index
 ─────────────               ────────────              ────────────
-webb.org (117 pages) ──►  data/scraped/*.json  ──►  ChromaDB
+webb.org (117 pages) ──►  data-store/scraped/*.json  ──►  ChromaDB
   via scraper.py              (plain text)          1,115 chunks
                                                     768-dim vectors
-PDFs (9 files)       ──►  data/scraped/*.json  ──►  (same index)
+PDFs (9 files)       ──►  data-store/scraped/*.json  ──►  (same index)
   via pdf_loader.py           (plain text)
 ```
 
@@ -33,7 +33,7 @@ The pipeline has three stages:
 | **Method** | `requests` + `BeautifulSoup` (static HTML); `Playwright` for JS-rendered pages (`scrape_curriculum.py`) |
 | **Source list** | Hardcoded from `webb.org/view-our-sitemap` |
 | **Pages scraped** | 117 pages (69 static + 33 athletic teams + 9 additional + 6 curriculum-detail via Playwright) |
-| **Output** | `data/scraped/web_*.json` |
+| **Output** | `data-store/scraped/web_*.json` |
 | **Limitations** | Cannot scrape JavaScript-rendered content (AJAX team rosters, calendar events, curriculum-detail pages) |
 
 **URL coverage by section:**
@@ -67,7 +67,7 @@ The pipeline has three stages:
 | **Script** | `ingest/pdf_loader.py` |
 | **Method** | `pypdf` text extraction |
 | **Source folder** | `data/pdfs/` |
-| **Output** | `data/scraped/pdf_*.json` |
+| **Output** | `data-store/scraped/pdf_*.json` |
 
 **Current PDF inventory:**
 
@@ -111,7 +111,7 @@ Both scraper.py and pdf_loader.py produce the same JSON format:
 }
 ```
 
-All JSON files are saved to `data/scraped/`. The index builder makes no distinction between web-scraped and PDF-sourced files.
+All JSON files are saved to `data-store/scraped/`. The index builder makes no distinction between web-scraped and PDF-sourced files.
 
 ### 3.2 Text Chunking
 
@@ -172,7 +172,7 @@ Fixed-length splitting at character position N would cut mid-sentence, breaking 
 | **Database** | ChromaDB (persistent, local) |
 | **Distance metric** | Cosine similarity (`hnsw:space: cosine`) |
 | **Collection name** | `webb_knowledge` |
-| **Storage path** | `chroma_db/` |
+| **Storage path** | `data-store/chroma_db/` |
 | **Resume mode** | Checks first chunk ID per file; skips already-indexed documents |
 
 **Why ChromaDB?**
@@ -356,10 +356,10 @@ Test script: `tests/test_cross_language.py` — tests 8 question pairs across la
 | Update Travel Dates PDFs | When new dates are released | Copy to `data/pdfs/` |
 | Re-scrape webb.org | If website content has changed | `python ingest/scraper.py` |
 | Re-parse PDFs | After adding/replacing PDFs | `python ingest/pdf_loader.py` |
-| Delete old ChromaDB | Before rebuilding | `rm -rf chroma_db/` |
+| Delete old ChromaDB | Before rebuilding | `rm -rf data-store/chroma_db/` |
 | Rebuild index | After all data is updated | `python rag/build_index.py` |
 | Run test suite | After rebuilding | `python tests/run_tests.py` |
-| Deploy | After tests pass | `git push` (auto-deploys on Render) |
+| Deploy | After tests pass | Commit data-store, update submodule pointer, push both repos |
 
 ### 5.2 Adding a New PDF
 
@@ -376,8 +376,9 @@ python rag/build_index.py
 # 4. Test
 python tests/run_tests.py
 
-# 5. Deploy
-git add . && git commit -m "Add new document" && git push
+# 5. Commit to the data repo, then update the submodule pointer in the app repo
+cd data-store && git add -A && git commit -m "Add new document" && git push && cd ..
+git add data-store && git commit -m "Update data-store submodule" && git push
 ```
 
 ### 5.3 Adding a New Web Page
@@ -396,20 +397,24 @@ This is the harder case. ChromaDB does not support partial deletion by source fi
 **Recommended approach: full rebuild.**
 
 ```bash
-# 1. Delete the outdated JSON file from data/scraped/
-rm data/scraped/pdf_old_handbook.json
+# 1. Delete the outdated JSON file from data-store/scraped/
+rm data-store/scraped/pdf_old_handbook.json
 
 # 2. If it's a PDF, also remove from data/pdfs/
 rm "data/pdfs/Old Handbook.pdf"
 
 # 3. Delete the entire ChromaDB index
-rm -rf chroma_db/
+rm -rf data-store/chroma_db/
 
 # 4. Rebuild from scratch (takes ~10 minutes for 1,115 chunks)
 python rag/build_index.py
 
 # 5. Verify
 python tests/run_tests.py
+
+# 6. Commit to the data repo, then update the submodule pointer in the app repo
+cd data-store && git add -A && git commit -m "Remove outdated content, rebuild index" && git push && cd ..
+git add data-store && git commit -m "Update data-store submodule" && git push
 ```
 
 **Why full rebuild?** ChromaDB stores chunks with IDs like `filename_0`, `filename_1`, etc. Deleting individual chunks is possible but error-prone — you'd need to know all chunk IDs for a given source. A full rebuild from the JSON files is simpler and guarantees consistency.
@@ -434,7 +439,7 @@ When you discover a new cross-section policy gap (e.g., a question about Topic A
 | Answer quality too low | Switch generation model (e.g., claude-sonnet → opus) | `query.py` |
 | Responses too slow | Switch to faster model or reduce `MAX_CHUNKS` | `query.py` |
 
-**Important:** Changing `CHUNK_SIZE` or `CHUNK_OVERLAP` requires a full index rebuild (`rm -rf chroma_db/ && python rag/build_index.py`). Changing `MAX_CHUNKS` or models takes effect immediately.
+**Important:** Changing `CHUNK_SIZE` or `CHUNK_OVERLAP` requires a full index rebuild (`rm -rf data-store/chroma_db/ && python rag/build_index.py`). Changing `MAX_CHUNKS` or models takes effect immediately without a rebuild.
 
 ---
 
@@ -460,14 +465,15 @@ webb-ai/
 │   ├── scrape_curriculum.py # Fetches curriculum-detail pages → JSON (Playwright, JS-rendered)
 │   └── pdf_loader.py       # Parses PDFs → JSON
 ├── data/
-│   ├── pdfs/               # Raw PDF source files (gitignored)
-│   └── scraped/            # Intermediate JSON files (committed)
+│   └── pdfs/               # Raw PDF source files (gitignored, local only)
+├── data-store/             # Git submodule → github.com/PatrickJYKang/webbgpt-1-data
+│   ├── chroma_db/          # Vector database
+│   └── scraped/            # Intermediate JSON files
 │       ├── web_*.json      # From scraper.py
 │       └── pdf_*.json      # From pdf_loader.py
 ├── rag/
 │   ├── build_index.py      # JSON → chunks → embeddings → ChromaDB
 │   └── query.py            # Multi-query retrieval + Claude generation
-├── chroma_db/              # Vector database (committed)
 ├── api/
 │   └── main.py             # FastAPI server
 ├── frontend/
