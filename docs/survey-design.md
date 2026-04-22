@@ -1,5 +1,8 @@
 # Webb AI Assistant — User Survey Design
 
+> Archived reference. This document is not part of the current rollout process.
+> The current source of truth for rollout is [beta-rollout.md](./beta-rollout.md).
+>
 > **Goal**: Understand how Webb students and parents find school information, how they use AI, and what they need most.
 > **Positioning**: "Webb Student Information & AI Needs Survey" — an independent student research project.
 > **Platform**: Google Forms, anonymous.

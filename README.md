@@ -4,7 +4,9 @@ A RAG-based AI chatbot that answers questions about The Webb Schools (Claremont,
 
 Built by the Webb Schools Coding/AI Club.
 
-**Live Demo**: [webb-ai.onrender.com](https://webb-ai.onrender.com) (free tier, first load may take ~30s)
+**Deployed App**: [webb-ai.onrender.com](https://webb-ai.onrender.com) (free tier, first load may take ~30s)
+
+**Current Status**: Publicly reachable but intentionally unadvertised. The project is in a quiet verification / just-pre-beta phase ahead of deliberate beta rollout. See [Beta Rollout Plan](docs/beta-rollout.md).
 
 ## Architecture
 
@@ -22,7 +24,7 @@ flowchart TB
 
     subgraph RAG["RAG Engine — query.py"]
         direction TB
-        QE["Query Expansion<br/><sub>Claude Haiku 4.5</sub>"]:::aiNode
+        QE["Query Expansion<br/><sub>Claude Sonnet 4</sub>"]:::aiNode
         TS["Topic Supplements<br/><sub>Pattern-matched queries</sub>"]:::logicNode
 
         subgraph Retrieval["Hybrid Retrieval"]
@@ -51,7 +53,7 @@ flowchart TB
     GEN -- "SSE stream" --> API
     API --> UI
 
-    WEB & PDF -.->|"scraper.py · pdf_loader.py"| VDB
+    WEB & PDF -.->|"scraper.py · scrape_curriculum.py · pdf_loader.py"| VDB
     VDB ---|"query embeddings"| SEM
 
     classDef userNode fill:#1a3a5c,stroke:#1a3a5c,color:#fff,font-weight:bold
@@ -74,7 +76,7 @@ flowchart TB
 | Component | Technology |
 |-----------|-----------|
 | **Embeddings** | Google Gemini `gemini-embedding-001` (768 dims) |
-| **Generation** | Claude Sonnet 4 (answers) + Claude Haiku 4.5 (query expansion) |
+| **Generation** | Claude Sonnet 4 (answers + query expansion) |
 | **Vector DB** | ChromaDB (local, persistent, 1,115 chunks) |
 | **Backend** | Python · FastAPI · Uvicorn |
 | **Frontend** | HTML / CSS / JS · marked.js (Markdown) |
@@ -82,7 +84,7 @@ flowchart TB
 
 ## Knowledge Base Sources
 
-All data comes from **official Webb Schools sources only**:
+The current indexed knowledge base is built from **public-facing Webb sources**:
 
 | Source | Type | Content | Last Updated |
 |--------|------|---------|-------------|
@@ -96,7 +98,7 @@ All data comes from **official Webb Schools sources only**:
 
 ```mermaid
 flowchart LR
-    W["webb.org<br/>117 pages"] -->|scraper.py| J["data-store/scraped/<br/>*.json"]
+    W["webb.org<br/>117 pages"] -->|scraper.py + scrape_curriculum.py| J["data-store/scraped/<br/>*.json"]
     P["PDFs (9)<br/>Handbook · Catalog · more"] -->|pdf_loader.py| J
     J -->|"build_index.py<br/><sub>chunk → embed → store</sub>"| C[("ChromaDB<br/>data-store/chroma_db")]
 
@@ -121,6 +123,7 @@ webbgpt-1/
 │   └── build_index.py        # Vector index builder
 ├── ingest/
 │   ├── scraper.py            # Webb.org website scraper
+│   ├── scrape_curriculum.py  # JS-rendered curriculum pages via Playwright
 │   └── pdf_loader.py         # PDF text extractor
 ├── frontend/
 │   ├── index.html            # Chat UI
@@ -132,9 +135,11 @@ webbgpt-1/
 │   ├── chroma_db/            # Vector database
 │   └── scraped/              # Intermediate JSON files
 ├── tests/
-│   ├── test_questions.json   # 35 test questions (8 categories)
+│   ├── test_questions.json   # 48 test questions (12 categories)
 │   ├── run_tests.py          # Automated test runner
-│   └── test_results.md       # Latest test results
+│   ├── test_results.json     # Raw test output
+│   ├── test_results.md       # Latest test report
+│   └── test_cross_language.py # Cross-language retrieval test
 ├── .env                      # API keys (not committed)
 ├── .env.example              # Template for .env
 ├── render.yaml               # Render deployment config
@@ -180,14 +185,18 @@ The vector database lives in the `data-store/` submodule. If you cloned with `--
 ```bash
 # 1. Re-scrape the website
 python ingest/scraper.py
+python ingest/scrape_curriculum.py
 
-# 2. Rebuild the vector index (overwrites old index)
+# 2. Delete the existing index so changed pages are re-embedded
+rm -rf data-store/chroma_db/
+
+# 3. Rebuild the vector index from current JSON files
 python rag/build_index.py
 
-# 3. Test
+# 4. Test
 python tests/run_tests.py
 
-# 4. Commit data-store, then update the submodule pointer in the app repo
+# 5. Commit data-store, then update the submodule pointer in the app repo
 cd data-store && git add -A && git commit -m "Update knowledge base from latest webb.org" && git push && cd ..
 git add data-store && git commit -m "Update data-store submodule" && git push   # Render auto-deploys
 ```
@@ -201,10 +210,13 @@ cp "New Handbook 2026-27.pdf" data/pdfs/
 # 2. Extract text from PDFs
 python ingest/pdf_loader.py
 
-# 3. Rebuild the vector index
+# 3. If this replaces an existing document, rebuild from scratch
+rm -rf data-store/chroma_db/
+
+# 4. Rebuild the vector index
 python rag/build_index.py
 
-# 4. Test and deploy (same as above)
+# 5. Test and deploy (same as above)
 ```
 
 #### Scenario C: Adding a completely new source (e.g., a Google Doc, FAQ page)
@@ -221,9 +233,11 @@ Create a JSON file in `data-store/scraped/` with this format:
 
 Then rebuild the index: `python rag/build_index.py`
 
+For a **brand-new** source file, `build_index.py` can append it in resume mode. For a changed or replaced source, do a full rebuild so old chunks are not left behind.
+
 ### Removing Outdated Information
 
-This is the harder problem. Since the vector index is built from all JSON files in `data/scraped/`, you need to:
+This is the harder problem. Since the vector index is built from all JSON files in `data-store/scraped/`, you need to:
 
 ```bash
 # 1. Delete the outdated JSON file
@@ -243,7 +257,7 @@ cd data-store && git add -A && git commit -m "Remove outdated content, rebuild i
 git add data-store && git commit -m "Update data-store submodule" && git push
 ```
 
-**Important**: There is no "partial update" — you must rebuild the entire index. This takes about 10 minutes due to Gemini API rate limits (1,115 chunks x embedding calls).
+**Important**: There is no safe partial refresh for changed or removed existing sources. `build_index.py` can append brand-new files in resume mode, but it does not automatically refresh already-indexed documents. A full rebuild takes about 10 minutes due to Gemini API rate limits (1,115 chunks x embedding calls).
 
 ### Annual Maintenance Checklist
 
@@ -251,7 +265,7 @@ Each school year (typically August):
 
 1. **Replace** `data/pdfs/` with the new Student Handbook and Course Catalog
 2. **Re-run** `python ingest/pdf_loader.py` to extract text
-3. **Re-run** `python ingest/scraper.py` to get latest website content
+3. **Re-run** `python ingest/scraper.py` and `python ingest/scrape_curriculum.py` to get latest website content
 4. **Delete** old JSON files from `data-store/scraped/` (e.g., last year's handbook)
 5. **Delete** `data-store/chroma_db/` and rebuild: `python rag/build_index.py`
 6. **Run tests**: `python tests/run_tests.py`
@@ -309,7 +323,7 @@ Requirements:
 ## Testing
 
 ```bash
-# Run the full test suite (35 questions, takes ~10 minutes)
+# Run the full test suite (48 questions, takes ~10 minutes)
 python tests/run_tests.py
 
 # Results saved to:
@@ -317,24 +331,25 @@ python tests/run_tests.py
 # - tests/test_results.md (formatted report)
 ```
 
-**Latest results**: 93.7% average coverage across 35 questions in 8 categories.
+**Latest recorded run**: 93.7% average keyword coverage across 48 questions. See [tests/test_results.md](tests/test_results.md) for the full breakdown.
 
 ## Cost Estimate
 
-| Component | Cost | Notes |
-|-----------|------|-------|
-| Claude Sonnet (answers) | ~$0.004/query | ~20 chunks context + response |
-| Claude Haiku (query expansion) | ~$0.0003/query | Short prompt |
-| Gemini Embeddings | ~$0.0001/query | 12 queries x 768 dims |
-| Render hosting | Free | Free tier, paid starts at $7/mo |
-| **Total per query** | **~$0.005** | **~$5 per 1000 questions** |
+| Component | Usage | Notes |
+|-----------|-------|-------|
+| Claude Sonnet | Query expansion + answer generation | Main variable model cost |
+| Gemini Embeddings | Index build + retrieval embeddings | Current scale has fit comfortably in the free tier |
+| Render hosting | 1 web service | Free tier currently in use |
+| **Overall** | Low at current scale | Exact cost depends on traffic, prompt length, and provider pricing |
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Knowledge Base Guide](docs/knowledge-base-guide.md) | How data is acquired, processed, and maintained |
-| [Product Roadmap](docs/roadmap.md) | Feature priorities and development phases |
+| [Submission Overview](docs/sumbission.md) | High-level project summary, how it works, and why it matters |
+| [Beta Rollout Plan](docs/beta-rollout.md) | Current rollout status and validation plan |
+| [Knowledge Base Guide](docs/knowledge-base-guide.md) | Current pipeline plus maintenance guidance for future source additions |
+| [Product Roadmap](docs/roadmap.md) | Temporarily suspended longer-term idea bank; not the current execution guide |
 
 ## License
 

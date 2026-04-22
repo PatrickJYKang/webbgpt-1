@@ -1,6 +1,8 @@
 # WebbGPT Knowledge Base Guide
 
 > How raw data is acquired, processed into vector embeddings, and maintained over time.
+>
+> This is the maintenance guide for the current pipeline and for future source additions. For the current deployed scope and status, use the [README](../README.md) as the top-level reference.
 
 ---
 
@@ -29,12 +31,12 @@ The pipeline has three stages:
 
 | Item | Detail |
 |------|--------|
-| **Script** | `ingest/scraper.py` |
-| **Method** | `requests` + `BeautifulSoup` (static HTML); `Playwright` for JS-rendered pages (`scrape_curriculum.py`) |
+| **Scripts** | `ingest/scraper.py` + `ingest/scrape_curriculum.py` |
+| **Method** | `requests` + `BeautifulSoup` for most pages; `Playwright` for JS-rendered curriculum pages |
 | **Source list** | Hardcoded from `webb.org/view-our-sitemap` |
 | **Pages scraped** | 117 pages (69 static + 33 athletic teams + 9 additional + 6 curriculum-detail via Playwright) |
 | **Output** | `data-store/scraped/web_*.json` |
-| **Limitations** | Cannot scrape JavaScript-rendered content (AJAX team rosters, calendar events, curriculum-detail pages) |
+| **Limitations** | Some JavaScript-rendered content still is not captured, especially AJAX team rosters and calendar events |
 
 **URL coverage by section:**
 
@@ -85,7 +87,7 @@ The pipeline has three stages:
 
 ### 2.3 External Resource Links (not indexed, provided as links)
 
-These are referenced in responses when relevant but NOT stored in the vector index:
+These are helper links that may be referenced in responses when relevant but are NOT stored in the vector index. They are separate from the current indexed corpus described in the [README](../README.md).
 
 | Resource | URL | Trigger |
 |----------|-----|---------|
@@ -141,7 +143,7 @@ Fixed-length splitting at character position N would cut mid-sentence, breaking 
 
 | Metric | Value |
 |--------|-------|
-| Total chunks | 935 |
+| Total chunks | 1,115 |
 | Avg chunk length | ~900 chars |
 | Sources | 126 JSON documents (117 web + 9 PDF) |
 
@@ -207,13 +209,13 @@ All queries → Gemini embedding → ChromaDB   ChromaDB top-5 (+0.05 score boos
      └──────────── Merge & Deduplicate ─────┘
                          │
                          ▼
-              Sort by score → Top 20 semantic chunks
+              Sort by score → Top 15 semantic chunks
                          │
                          ▼
               Keyword fallback → cross-section terms
                          │
                          ▼
-              20 semantic + keyword chunks → Claude Sonnet
+              15 semantic + keyword chunks → Claude Sonnet
 ```
 
 ### 4.2 Cross-Language Retrieval Design
@@ -281,7 +283,7 @@ Test script: `tests/test_cross_language.py` — tests 8 question pairs across la
 
 **Why it is unnecessary here:**
 
-1. **Small corpus** — With only 1,115 chunks, retrieval returns 20-35 candidates, and the generation model (Sonnet) reads all 20. There is no need to further narrow them down. Reranking is valuable when selecting 10 chunks from 1,000+ candidates; we don't have that problem.
+1. **Small corpus** — With only 1,115 chunks, retrieval usually yields a manageable set of high-signal passages, and the generation model reads up to 15 semantic chunks plus any guaranteed keyword fallback snippets. There is no need to further narrow them down. Reranking is valuable when selecting 10 chunks from 1,000+ candidates; we don't have that problem.
 
 2. **Multi-query already provides soft reranking** — When the same chunk is retrieved by multiple expanded queries, we keep its highest score. This naturally promotes the most broadly relevant chunks.
 
@@ -336,7 +338,7 @@ Test script: `tests/test_cross_language.py` — tests 8 question pairs across la
 | Parameter | Value | Why |
 |-----------|-------|-----|
 | **Model** | `claude-sonnet-4-20250514` | Best quality-to-cost ratio; Haiku was tested but missed cross-referenced policies |
-| **Max tokens** | 1,024 | Concise, focused answers reduce hallucination risk |
+| **Max tokens** | 1,280 | Leaves room for complete grounded answers while staying concise |
 | **Temperature** | 0 | Minimizes hallucination; deterministic outputs |
 | **Streaming** | SSE (Server-Sent Events) | User sees text appear in ~1-2s instead of waiting 12-15s |
 | **Query expansion model** | `claude-sonnet-4-20250514` | Sonnet (not Haiku) — better multilingual intent mapping and Webb-specific term recognition |
@@ -354,7 +356,7 @@ Test script: `tests/test_cross_language.py` — tests 8 question pairs across la
 | Replace Student Handbook PDF | When new version is published | Copy to `data/pdfs/`, delete old version |
 | Replace Course Catalog PDF | When new version is published | Copy to `data/pdfs/`, delete old version |
 | Update Travel Dates PDFs | When new dates are released | Copy to `data/pdfs/` |
-| Re-scrape webb.org | If website content has changed | `python ingest/scraper.py` |
+| Re-scrape webb.org | If website content has changed | `python ingest/scraper.py && python ingest/scrape_curriculum.py` |
 | Re-parse PDFs | After adding/replacing PDFs | `python ingest/pdf_loader.py` |
 | Delete old ChromaDB | Before rebuilding | `rm -rf data-store/chroma_db/` |
 | Rebuild index | After all data is updated | `python rag/build_index.py` |
@@ -370,7 +372,7 @@ cp "New Document.pdf" data/pdfs/
 # 2. Parse it into JSON
 python ingest/pdf_loader.py
 
-# 3. Rebuild the index (resume mode: only indexes new files)
+# 3. Rebuild the index
 python rag/build_index.py
 
 # 4. Test
@@ -381,14 +383,19 @@ cd data-store && git add -A && git commit -m "Add new document" && git push && c
 git add data-store && git commit -m "Update data-store submodule" && git push
 ```
 
+If the PDF is **brand-new**, `build_index.py` can append it in resume mode. If it **replaces or updates** an existing document, delete `data-store/chroma_db/` first and do a full rebuild so the old chunks are removed.
+
 ### 5.3 Adding a New Web Page
 
 Edit `ingest/scraper.py` → add the URL to the `ALL_URLS` list, then:
 
 ```bash
 python ingest/scraper.py
+python ingest/scrape_curriculum.py
 python rag/build_index.py
 ```
+
+As above: adding a brand-new page can work with resume mode, but refreshing already-indexed pages requires deleting `data-store/chroma_db/` and rebuilding.
 
 ### 5.4 Removing Outdated Content
 
@@ -445,21 +452,22 @@ When you discover a new cross-section policy gap (e.g., a question about Topic A
 
 ## 6. Cost Estimates
 
-| Component | Usage | Monthly Cost (est.) |
-|-----------|-------|-------------------|
-| Gemini Embeddings | Index build only (~776 calls) | Free (well within free tier) |
-| Gemini Embeddings | Query time (~8 calls/question) | Free |
-| Claude Sonnet (query expansion) | 1 call/question | ~$1.50 for 500 questions |
-| Claude Sonnet (answer generation) | 1 call/question | ~$2.00 for 500 questions |
-| Render hosting | 1 web service | Free (750 hrs/month) |
-| **Total** | 500 questions/month | **~$3.50/month** |
+| Component | Usage | Notes |
+|-----------|-------|-------|
+| Gemini Embeddings | Index build only (~1,115 embedding calls for the current corpus) | Current scale has fit comfortably in the free tier |
+| Gemini Embeddings | Query time (typically 4-10 embedding calls/question) | Depends on topic supplements triggered |
+| Claude Sonnet (query expansion) | 1 call/question | Main variable model cost |
+| Claude Sonnet (answer generation) | 1 call/question | Main variable model cost |
+| Render hosting | 1 web service | Free tier currently in use |
+
+Exact dollar cost varies with provider pricing, traffic, and prompt length, so treat this section as a usage model rather than a fixed pricing sheet.
 
 ---
 
 ## 7. File Reference
 
 ```
-webb-ai/
+webbgpt-1/
 ├── ingest/
 │   ├── scraper.py          # Fetches webb.org pages → JSON (static HTML)
 │   ├── scrape_curriculum.py # Fetches curriculum-detail pages → JSON (Playwright, JS-rendered)
@@ -484,6 +492,7 @@ webb-ai/
     ├── test_questions.json       # 48 test questions
     ├── run_tests.py              # Keyword + LLM scoring
     ├── test_cross_language.py    # Cross-language retrieval consistency test
+    ├── test_results.json         # Raw test output
     ├── test_results.md           # Latest results
     └── cross_language_results.json  # Latest cross-language results
 ```

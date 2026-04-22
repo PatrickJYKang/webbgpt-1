@@ -1,6 +1,9 @@
 # WebbGPT Product Roadmap
 
-> Feature priorities for a student-built RAG AI campus assistant.
+> Temporarily suspended. This file is a longer-term idea bank, not the current implementation or prioritization guide.
+>
+> For the current project state and rollout process, use the [README](../README.md) and [beta-rollout.md](./beta-rollout.md).
+> References inside this file to survey-driven prioritization or next-step sequencing should be read as historical planning context, not current direction.
 
 ---
 

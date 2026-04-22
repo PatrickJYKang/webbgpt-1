@@ -1,15 +1,44 @@
 # WebbGPT Beta Rollout Plan
 
 > Logistics-first plan for validating the product with real users before deciding whether to pursue school support.
+>
+> Status: This is the current rollout document. The app is already publicly reachable, but it is intentionally unadvertised and still in a quiet verification / just-pre-beta phase.
 
 ---
 
-## Why Private Beta First
+## Current Status
+
+- The app is deployed and publicly accessible at `webb-ai.onrender.com`
+- It has not been actively announced or promoted yet
+- The current stage is **quiet verification before beta**
+- Survey docs are archived, and `roadmap.md` is temporarily suspended as a current planning guide
+
+---
+
+## Why Quiet Verification Before Beta
 
 - A 16-question survey sent cold to Webb students will get single-digit responses
 - We don't yet have school endorsement, and may not get it
 - We need **usage data and word-of-mouth**, not survey statistics
 - A private beta builds a user base that becomes leverage for whatever comes next (school pitch, public launch, or just a better product)
+
+---
+
+## Stage 0: Quiet Verification (Current)
+
+### Goal
+- Verify that the deployed app is stable enough, accurate enough, and clear enough to justify deliberate tester outreach
+
+### What to check
+- Link reliability and cold-start behavior
+- Basic answer quality on common Webb questions
+- Whether server logs are capturing enough signal to learn from usage
+- Any obvious UI confusion or friction before more people see it
+
+### Exit criteria
+- The app works consistently enough to share without apologizing for it first
+- The biggest obvious answer failures have been patched
+- You are confident enough to put it in front of a small tester group
 
 ---
 
@@ -104,7 +133,7 @@ Bring this to the administration or AI group:
 - "X students used this over Y weeks"
 - "Z% found it helpful"
 - "Here are the top 5 things students asked about" (from logs)
-- "Here's what I'd build next with support: [1B/1C from roadmap]"
+- "Here's what I'd build next with support: [next scoped feature]"
 
 This is 10x more compelling than a survey proposal. You're showing a working product with real users, not asking permission to start.
 
@@ -112,7 +141,7 @@ This is 10x more compelling than a survey proposal. You're showing a working pro
 **Use if:** school says no, or you'd rather stay independent.
 
 - Keep iterating on the knowledge base
-- Add Phase 1.5 features (Socratic tutor etc.) based on what users are actually asking for
+- Add the next high-value features based on what users are actually asking for
 - The product grows on its own merit
 
 ### Path C: Merge with School AI Group
@@ -127,18 +156,20 @@ This is 10x more compelling than a survey proposal. You're showing a working pro
 
 | Document | Status |
 |----------|--------|
-| `survey-design.md` | **On hold.** The full survey methodology is good work but wrong timing. Revisit if the school asks for formal data, or if Stage 2 reaches 60+ users and you want deeper insights. |
-| `survey-google-forms.md` | **Replaced** by the in-app micro-feedback widget for now. Keep the file — the parent survey may be useful later if you pursue Phase 2. |
-| `roadmap.md` | **Still valid.** Beta data will tell you which Phase 1 sub-feature to build next. |
+| `survey-design.md` | **Archived.** Kept for reference only; not part of the current rollout process. |
+| `survey-google-forms.md` | **Archived.** Kept for reference only; not part of the current rollout process. |
+| `roadmap.md` | **Temporarily suspended.** Longer-term idea bank, not the current implementation or prioritization guide. |
 | `knowledge-base-guide.md` | **Still valid.** Core technical reference. |
 
 ---
 
 ## Implementation Checklist
 
-### Before Stage 1
+### During Stage 0
 - [ ] Confirm the Render deployment is stable and fast enough for testers (cold start issue?)
 - [ ] Check server logs are capturing queries (or add basic logging if not)
+
+### Before Stage 1
 - [ ] Share link with dev group, keep it casual
 
 ### Before Stage 2
@@ -157,10 +188,11 @@ This is 10x more compelling than a survey proposal. You're showing a working pro
 ## Timeline
 
 ```
+Now         Quiet verification (deployed but unadvertised)
 Week 1–2    Private beta (dev group, 5–10 testers)
-Week 2      Fix issues, decide go/no-go for public
+Week 2      Fix issues, decide go/no-go for broader sharing
 Week 3–5    Public beta (opt-in, in-app feedback)
 Week 6      Review data, choose path A/B/C
 ```
 
-Total: ~6 weeks from link-share to decision point. No surveys, no forms, no waiting for permission.
+Total: ~6 weeks from first deliberate tester outreach to decision point. No surveys, no forms, no waiting for permission.

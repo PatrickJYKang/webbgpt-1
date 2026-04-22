@@ -1,5 +1,8 @@
 # Webb AI Survey — Google Forms Ready (English Version)
 
+> Archived reference. This document is not part of the current rollout process.
+> The current source of truth for rollout is [beta-rollout.md](./beta-rollout.md).
+>
 > Copy each section below into Google Forms. Question type and required/optional status are marked for each question.
 > After completing the English version, duplicate the form 6 times for other languages.
 
