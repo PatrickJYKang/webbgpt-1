@@ -2,9 +2,7 @@
 
 A RAG-based AI chatbot that answers questions about The Webb Schools (Claremont, CA), covering admissions, academics, student life, policies, athletics, and more.
 
-Built by the Webb Schools Coding/AI Club.
-
-**Deployed App**: [webb-ai.onrender.com](https://webb-ai.onrender.com) (free tier, first load may take ~30s)
+**Live Demo**: [webb-ai.onrender.com](https://webb-ai.onrender.com) (free tier, first load may take ~30s)
 
 **Current Status**: Publicly reachable but intentionally unadvertised. The project is in a quiet verification / just-pre-beta phase ahead of deliberate beta rollout. See [Beta Rollout Plan](docs/beta-rollout.md).
 
