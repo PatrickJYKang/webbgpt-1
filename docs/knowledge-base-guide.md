@@ -67,7 +67,7 @@ The pipeline has three stages:
 | Item | Detail |
 |------|--------|
 | **Script** | `ingest/pdf_loader.py` |
-| **Method** | `pdfplumber` — body text + tables extracted as Markdown |
+| **Method** | `pdfplumber` (body + tables → Markdown); a sibling `*.md` in `data/pdfs/` overrides a broken-font PDF — the course catalog is ingested this way, its offering grids rendered as one self-describing line per course |
 | **Source folder** | `data/pdfs/` |
 | **Output** | `data-store/scraped/pdf_*.json` |
 
