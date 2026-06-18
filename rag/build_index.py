@@ -1,6 +1,6 @@
 """
 Build the ChromaDB vector index from scraped and PDF content.
-Embeddings: Google Gemini text-embedding-004 (free, multilingual, 768 dims)
+Embeddings: Google Gemini gemini-embedding-001 (free, multilingual, 768 dims)
 Run this after scraper.py and pdf_loader.py.
 """
 

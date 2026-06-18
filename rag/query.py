@@ -1,7 +1,7 @@
 """
 RAG query engine with Multi-Query expansion.
 Embeddings: Gemini gemini-embedding-001 (free, native multilingual)
-Generation: Claude claude-sonnet-4-20250514 via Anthropic API (Haiku for query expansion)
+Generation: Claude claude-sonnet-4-6 via Anthropic API (Sonnet also handles query expansion)
 """
 
 import os
@@ -64,8 +64,10 @@ def expand_query(question):
     aren't drowned out by translated queries.
     """
     response = claude.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=256,
+        thinking={"type": "disabled"},
+        output_config={"effort": "low"},
         system="""You generate search queries for The Webb Schools knowledge base.
 Webb Schools uses these specific terms in their documents:
 - Overnight Pass / Weekend Pass: permission to leave campus overnight
@@ -378,9 +380,11 @@ def answer(question, chat_history=None):
             sources.append(label)
 
     response = claude.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=1280,
         temperature=0,
+        thinking={"type": "disabled"},
+        output_config={"effort": "low"},
         system=SYSTEM_PROMPT,
         messages=messages,
     )
@@ -483,9 +487,11 @@ def answer_stream(question, chat_history=None):
 
     # Stream the response
     with claude.messages.stream(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=1280,
         temperature=0,
+        thinking={"type": "disabled"},
+        output_config={"effort": "low"},
         system=SYSTEM_PROMPT,
         messages=messages,
     ) as stream:

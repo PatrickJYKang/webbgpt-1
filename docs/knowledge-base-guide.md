@@ -337,11 +337,11 @@ Test script: `tests/test_cross_language.py` — tests 8 question pairs across la
 
 | Parameter | Value | Why |
 |-----------|-------|-----|
-| **Model** | `claude-sonnet-4-20250514` | Best quality-to-cost ratio; Haiku was tested but missed cross-referenced policies |
+| **Model** | `claude-sonnet-4-6` | Best quality-to-cost ratio; Haiku was tested but missed cross-referenced policies |
 | **Max tokens** | 1,280 | Leaves room for complete grounded answers while staying concise |
 | **Temperature** | 0 | Minimizes hallucination; deterministic outputs |
 | **Streaming** | SSE (Server-Sent Events) | User sees text appear in ~1-2s instead of waiting 12-15s |
-| **Query expansion model** | `claude-sonnet-4-20250514` | Sonnet (not Haiku) — better multilingual intent mapping and Webb-specific term recognition |
+| **Query expansion model** | `claude-sonnet-4-6` | Sonnet (not Haiku) — better multilingual intent mapping and Webb-specific term recognition |
 | **Expanded queries** | 3 per question | Kept low so original question's multilingual embedding results aren't drowned out |
 | **Chat history** | Last 6 messages | Follow-up question support without excessive token usage |
 
