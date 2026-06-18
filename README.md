@@ -122,7 +122,7 @@ webbgpt-1/
 ├── ingest/
 │   ├── scraper.py            # Webb.org website scraper
 │   ├── scrape_curriculum.py  # JS-rendered curriculum pages via Playwright
-│   └── pdf_loader.py         # PDF text extractor
+│   └── pdf_loader.py         # PDF text + table extractor
 ├── frontend/
 │   ├── index.html            # Chat UI
 │   ├── app.js                # Client-side logic + streaming

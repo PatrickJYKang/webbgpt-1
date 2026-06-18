@@ -67,7 +67,7 @@ The pipeline has three stages:
 | Item | Detail |
 |------|--------|
 | **Script** | `ingest/pdf_loader.py` |
-| **Method** | `pypdf` text extraction |
+| **Method** | `pdfplumber` — body text + tables extracted as Markdown |
 | **Source folder** | `data/pdfs/` |
 | **Output** | `data-store/scraped/pdf_*.json` |
 
