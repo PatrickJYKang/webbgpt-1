@@ -92,12 +92,15 @@ def get_embeddings(texts):
                 time.sleep(0.55)  # Paid tier, ~20% faster than before
                 break
             except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    wait = 60 * (attempt + 1)
-                    print(f"\n  Rate limited. Waiting {wait}s before retry {attempt+1}/5...")
-                    time.sleep(wait)
+                msg = str(e)
+                if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                    wait = 60 * (attempt + 1)        # rate limit — long cooldown
+                elif any(s in msg for s in ("500", "502", "503", "504", "UNAVAILABLE", "INTERNAL")):
+                    wait = 10 * (attempt + 1)         # transient server error — recovers fast
                 else:
                     raise
+                print(f"\n  {msg[:70].strip()} — retry {attempt + 1}/5 after {wait}s")
+                time.sleep(wait)
         else:
             raise RuntimeError(f"Failed after 5 retries")
     return embeddings
