@@ -1,7 +1,7 @@
 """
 WebbGPT automated test runner.
 Reads test_questions.json, runs each through the RAG pipeline,
-scores with keyword matching + LLM evaluation (Gemini 3.1 Flash-Lite),
+scores with keyword matching + LLM evaluation (Gemini 3.5 Flash),
 and saves results to test_results.json and test_results.md.
 """
 
@@ -25,7 +25,7 @@ MD_FILE = os.path.join(os.path.dirname(__file__), "test_results.md")
 
 # Gemini client for LLM scoring
 gemini_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-LLM_JUDGE_MODEL = "gemini-3.1-flash-lite"  # most cost-efficient GA judge; fallbacks tried below
+LLM_JUDGE_MODEL = "gemini-3.5-flash"  # latest full Flash judge; fallbacks tried below
 
 
 def detect_judge_model():
@@ -33,7 +33,7 @@ def detect_judge_model():
     try:
         models = [m.name for m in gemini_client.models.list()]
         # Prefer newest first
-        for candidate in ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash"]:
+        for candidate in ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"]:
             for m in models:
                 if candidate in m:
                     print(f"  LLM Judge model: {m}")
